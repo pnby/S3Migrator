@@ -8,14 +8,13 @@ import boto3
 from app import logger
 from app.api.scheduler import Scheduler
 from app.api.tar import TarManager
-from app.utils.config import SECRET_KEY, ACCESS_KEY_ID
+from app.utils.config import SECRET_KEY, ACCESS_KEY_ID, MYSQL_USER, MYSQL_PASSWD
 from app.utils.utils import singleton
 
 
 @final
 @singleton
 class BackupManager:
-    _tar_manager: TarManager
     _scheduler: Scheduler = Scheduler()
     _bucket: str = "backups"
 
@@ -24,7 +23,7 @@ class BackupManager:
         self._tar_manager = TarManager(
             source_dir=source_dir,
             destination_dir=dest_dir,
-            tar_name=self._tar_manager
+            tar_name=self._filename  # Используем self._filename здесь
         )
         self._client = boto3.client("s3",
                                     endpoint_url="https://statew.s3.ru-1.storage.selcloud.ru",
@@ -41,6 +40,10 @@ class BackupManager:
         if tar_path is None:
             logger.error("TarPath is None, backup procedure failed")
             return
+
+        logger.info("Starting mysql migration")
+        self.create_mysql_dump(tar_path, user=MYSQL_USER, password=MYSQL_PASSWD)
+        logger.info("Ended mysql migration")
 
         logger.info("Starting file uploading")
         self._client.upload_file(tar_path, self._bucket, tar_path)
@@ -76,7 +79,7 @@ class BackupManager:
     @staticmethod
     def create_mysql_dump(backup_dir: str, user: str, password: str):
         backup_file = os.path.join(backup_dir, 'backup.sql')
-        command = f"mysqldump -u {user} -p'{password}' --all-databases > {backup_dir}"
+        command = f"mysqldump -u {user} -p'{password}' --all-databases > {backup_file}"
 
         try:
             result = subprocess.run(command, shell=True, capture_output=True, text=True)
