@@ -1,5 +1,4 @@
 import os
-import subprocess
 from datetime import datetime, timezone, timedelta
 from typing import final
 
@@ -8,7 +7,7 @@ import boto3
 from app import logger
 from app.api.scheduler import Scheduler
 from app.api.tar import TarManager
-from app.utils.config import SECRET_KEY, ACCESS_KEY_ID, MYSQL_USER, MYSQL_PASSWD
+from app.utils.config import SECRET_KEY, ACCESS_KEY_ID
 from app.utils.utils import singleton
 
 
@@ -41,9 +40,8 @@ class BackupManager:
             return
 
         logger.info("Starting file uploading")
-        self._client.upload_file(tar_path, self._bucket, self._filename)
+        self._client.upload_file(tar_path, self._bucket, self._filename + ".tar")
         logger.info("File uploading successfully ended, removing redundant archives")
-        self.clear_old_files()
         try:
             os.remove(tar_path)
             logger.info(f"Removed local archive file: {tar_path}")
@@ -54,20 +52,3 @@ class BackupManager:
         self._scheduler.add_tasks(time, self.upload_backup)
         self._scheduler.run()
 
-    def clear_old_files(self, days: int = 2, application: str = "x-tar"):
-        logger.info(f"Starting cleanup of files older than {days} days")
-        now = datetime.now(timezone.utc)
-        cutoff_date = now - timedelta(days=days)
-
-        response = self._client.list_objects_v2(Bucket=self._bucket)
-        if 'Contents' not in response:
-            logger.info("No files found in bucket")
-            return
-
-        for obj in response['Contents']:
-            key = obj['Key']
-            last_modified = obj['LastModified']
-
-            if last_modified < cutoff_date and key.endswith(f".{application}"):
-                self._client.delete_object(Bucket=self._bucket, Key=key)
-                logger.info(f"Deleted file: {key}, last modified at {last_modified}")
