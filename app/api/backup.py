@@ -35,7 +35,6 @@ class BackupManager:
 
     def upload_backup(self):
         logger.info("Starting backup procedure")
-        self.clear_old_files()
         tar_path = self._tar_manager.create_tar()
         if tar_path is None:
             logger.error("TarPath is None, backup procedure failed")
@@ -48,6 +47,7 @@ class BackupManager:
         logger.info("Starting file uploading")
         self._client.upload_file(tar_path, self._bucket, tar_path)
         logger.info("File uploading successfully ended, removing redundant archives")
+        self.clear_old_files()
         try:
             os.remove(tar_path)
             logger.info(f"Removed local archive file: {tar_path}")
