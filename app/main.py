@@ -14,7 +14,7 @@ def main():
     backup_manager = BackupManager(
         source_dir=args.source_dir,
         dest_dir=args.dest_dir,
-        timestamp=args.timestamp
+        timestamp=args.time
     )
 
     backup_manager.start_upload_task(args.time)
