@@ -23,7 +23,7 @@ class BackupManager:
         self._tar_manager = TarManager(
             source_dir=source_dir,
             destination_dir=dest_dir,
-            tar_name=self._filename  # Используем self._filename здесь
+            tar_name=self._filename
         )
         self._client = boto3.client("s3",
                                     endpoint_url="https://statew.s3.ru-1.storage.selcloud.ru",
@@ -45,7 +45,7 @@ class BackupManager:
         logger.info("Ended mysql migration")
 
         logger.info("Starting file uploading")
-        self._client.upload_file(tar_path, self._bucket, tar_path)
+        self._client.upload_file(tar_path, self._bucket, self._filename)
         logger.info("File uploading successfully ended, removing redundant archives")
         self.clear_old_files()
         try:
@@ -75,22 +75,3 @@ class BackupManager:
             if last_modified < cutoff_date and key.endswith(f".{application}"):
                 self._client.delete_object(Bucket=self._bucket, Key=key)
                 logger.info(f"Deleted file: {key}, last modified at {last_modified}")
-
-    @staticmethod
-    def create_mysql_dump(backup_dir: str, user: str, password: str):
-        backup_file = os.path.join(backup_dir, 'backup.sql')
-        command = f"mysqldump -u {user} -p'{password}' --all-databases > {backup_file}"
-
-        try:
-            result = subprocess.run(command, shell=True, capture_output=True, text=True)
-
-            if result.returncode == 0:
-                logger.info(f"Backup created: {backup_file}")
-            else:
-                logger.error(f"Error creating backup: {result.stderr}")
-                return None
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Subprocess error: {e}")
-            return None
-
-        return backup_file
