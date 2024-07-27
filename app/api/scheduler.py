@@ -6,13 +6,15 @@ import time
 
 from app.utils.utils import singleton
 
+from app import logger
+
 
 @final
 @singleton
 class Scheduler:
     def __init__(self):
         self.jobs = set()
-        self.add_interval_task(10, self.print_current_time())
+        self.add_interval_task(10, self.print_current_time)
 
     def add_tasks(self, time_str, task):
         job = schedule.every().day.at(time_str).do(task)
@@ -24,7 +26,7 @@ class Scheduler:
 
     @staticmethod
     def print_current_time():
-        print("Current time:", datetime.now())
+        logger.info("Current time:", datetime.now())
 
     @staticmethod
     def run():
