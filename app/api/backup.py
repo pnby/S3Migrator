@@ -40,10 +40,6 @@ class BackupManager:
             logger.error("TarPath is None, backup procedure failed")
             return
 
-        logger.info("Starting mysql migration")
-        self.create_mysql_dump(tar_path, user=MYSQL_USER, password=MYSQL_PASSWD)
-        logger.info("Ended mysql migration")
-
         logger.info("Starting file uploading")
         self._client.upload_file(tar_path, self._bucket, self._filename)
         logger.info("File uploading successfully ended, removing redundant archives")
