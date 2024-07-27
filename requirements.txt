@@ -1,0 +1,4 @@
+boto3~=1.34.149
+schedule~=1.2.2
+python-dotenv~=1.0.1
+envparse~=0.2.0
