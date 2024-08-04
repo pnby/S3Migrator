@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timezone, timedelta
-from typing import final, Optional, List
+from typing import final
 
 import boto3
 
@@ -17,13 +17,12 @@ class BackupManager:
     _scheduler: Scheduler = Scheduler()
     _bucket: str = "backups"
 
-    def __init__(self, source_dir: str, dest_dir: str, timestamp: str, extra_dirs: Optional[List[str]] = None):
+    def __init__(self, source_dir: str, dest_dir: str, timestamp: str):
         self._filename = f"backup-{timestamp}"
         self._tar_manager = TarManager(
             source_dir=source_dir,
             destination_dir=dest_dir,
-            tar_name=self._filename,
-            extra_dirs=extra_dirs
+            tar_name=self._filename
         )
         self._client = boto3.client("s3",
                                     endpoint_url="https://statew.s3.ru-1.storage.selcloud.ru",
@@ -46,25 +45,8 @@ class BackupManager:
         try:
             os.remove(tar_path)
             logger.info(f"Removed local archive file: {tar_path}")
-            self.cleanup_old_backups()
         except Exception as e:
             logger.error(f"Error removing local archive file: {e}")
-
-    def cleanup_old_backups(self, keep_count: int = 5):
-        logger.info(f"Cleaning up old backups, keeping the latest {keep_count} backups")
-
-        response = self._client.list_objects_v2(Bucket=self._bucket)
-        if 'Contents' not in response:
-            logger.info("No backups found to clean up.")
-            return
-
-        backups: List[dict] = response['Contents']
-
-        backups.sort(key=lambda obj: obj['LastModified'], reverse=True)
-
-        for obj in backups[keep_count:]:
-            logger.info(f"Deleting old backup: {obj['Key']}")
-            self._client.delete_object(Bucket=self._bucket, Key=obj['Key'])
 
     def start_upload_task(self, time: str):
         self._scheduler.add_tasks(time, self.upload_backup)
