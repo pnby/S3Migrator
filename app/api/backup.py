@@ -50,13 +50,21 @@ class BackupManager:
         except Exception as e:
             logger.error(f"Error removing local archive file: {e}")
 
-    def cleanup_old_backups(self, days: int = 7):
-        logger.info(f"Cleaning up backups older than {days} days")
-        cutoff_time = datetime.now(timezone.utc) - timedelta(days=days)
-        for obj in self._client.list_objects_v2(Bucket=self._bucket).get('Contents', []):
-            if obj['LastModified'] < cutoff_time:
-                logger.info(f"Deleting old backup: {obj['Key']}")
-                self._client.delete_object(Bucket=self._bucket, Key=obj['Key'])
+    def cleanup_old_backups(self, keep_count: int = 5):
+        logger.info(f"Cleaning up old backups, keeping the latest {keep_count} backups")
+
+        response = self._client.list_objects_v2(Bucket=self._bucket)
+        if 'Contents' not in response:
+            logger.info("No backups found to clean up.")
+            return
+
+        backups: List[dict] = response['Contents']
+
+        backups.sort(key=lambda obj: obj['LastModified'], reverse=True)
+
+        for obj in backups[keep_count:]:
+            logger.info(f"Deleting old backup: {obj['Key']}")
+            self._client.delete_object(Bucket=self._bucket, Key=obj['Key'])
 
     def start_upload_task(self, time: str):
         self._scheduler.add_tasks(time, self.upload_backup)
