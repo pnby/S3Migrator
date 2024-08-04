@@ -2,7 +2,7 @@ import subprocess
 import tarfile
 import os
 import time
-from typing import Optional, final, cast
+from typing import Optional, List, final, cast
 
 from app.utils.config import MYSQL_USER, MYSQL_PASSWD
 from app.utils.utils import singleton
@@ -12,11 +12,12 @@ from app import logger
 @final
 @singleton
 class TarManager:
-    def __init__(self, source_dir, destination_dir, tar_name):
+    def __init__(self, source_dir, destination_dir, tar_name, extra_dirs: Optional[List[str]] = None):
         self.tar_path: Optional[str] = None
         self.source_dir = source_dir
         self.destination_dir = destination_dir
         self.tar_name = tar_name
+        self.extra_dirs = extra_dirs or []
         self.dump_path = "/mysql_dumps"
 
     def _create_tar(self) -> None:
@@ -27,12 +28,9 @@ class TarManager:
                 return
 
             with tarfile.open(self.tar_path, "w") as tar:
-                for root, _, files in os.walk(self.source_dir):
-                    for file in files:
-                        file_path = cast(str, os.path.join(root, file))
-                        arcname = os.path.relpath(file_path, start=self.source_dir)
-                        tar.add(file_path, arcname=arcname)
-                        logger.info(f"Added {arcname} to {self.tar_path}")
+                self._add_directory_to_tar(tar, self.source_dir)
+                for extra_dir in self.extra_dirs:
+                    self._add_directory_to_tar(tar, extra_dir)
 
                 dump_path = self._create_mysql_dump()
                 if dump_path:
@@ -43,6 +41,14 @@ class TarManager:
                     logger.error("Error while creating mysql dump")
         except Exception as e:
             logger.error(e)
+
+    def _add_directory_to_tar(self, tar, directory):
+        for root, _, files in os.walk(directory):
+            for file in files:
+                file_path = cast(str, os.path.join(root, file))
+                arcname = os.path.relpath(file_path, start=directory)
+                tar.add(file_path, arcname=arcname)
+                logger.info(f"Added {arcname} to {self.tar_path}")
 
     def create_tar(self) -> Optional[str]:
         start_time = time.time()
