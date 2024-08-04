@@ -16,7 +16,6 @@ def main():
         source_dir=args.source_dir,
         dest_dir=args.dest_dir,
         timestamp="".join(str(datetime.now())[:10].split(" ")),
-        extra_dirs=args.extra_dirs
     )
 
     backup_manager.start_upload_task(args.time)
