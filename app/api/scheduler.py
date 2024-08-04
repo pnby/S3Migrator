@@ -26,7 +26,7 @@ class Scheduler:
 
     @staticmethod
     def print_current_time():
-        logger.info("Current time:", str(datetime.now()))
+        logger.info(f"Current time: {datetime.now()}")
 
     @staticmethod
     def run():
